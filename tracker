@@ -1,0 +1,398 @@
+import React, { useState, useEffect } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Copy, Play, Square, Clock, Calendar, Check } from 'lucide-react';
+
+const ScheduleTracker = () => {
+  const taskCategories = [
+    'Personal Branding',
+    'Networking',
+    'Fitness',
+    'Creativity',
+    'Chores',
+    'Book Keeping'
+  ];
+
+  const [activities, setActivities] = useState([
+    {
+      id: Date.now(),
+      completed: false,
+      date: new Date().toISOString().split('T')[0],
+      startTime: '',
+      endTime: '',
+      targetTime: '',
+      whatToDo: '',
+      category: '',
+      estimatedTime: '',
+      actualTime: '',
+      underOver: '',
+      minutes: '',
+      isRunning: false,
+      timerStart: null,
+      addedToCalendar: false
+    }
+  ]);
+
+  const [shareLink, setShareLink] = useState('');
+  const [isGoogleAuthenticated, setIsGoogleAuthenticated] = useState(false);
+
+  const addActivity = () => {
+    setActivities([
+      ...activities, 
+      {
+        id: Date.now(),
+        completed: false,
+        date: new Date().toISOString().split('T')[0],
+        startTime: '',
+        endTime: '',
+        targetTime: '',
+        whatToDo: '',
+        category: '',
+        estimatedTime: '',
+        actualTime: '',
+        underOver: '',
+        minutes: '',
+        isRunning: false,
+        timerStart: null,
+        addedToCalendar: false
+      }
+    ]);
+  };
+
+  const updateActivity = (index, field, value) => {
+    const newActivities = [...activities];
+    newActivities[index][field] = value;
+    setActivities(newActivities);
+  };
+
+  const toggleTimer = (index) => {
+    const newActivities = [...activities];
+    const activity = newActivities[index];
+
+    if (!activity.isRunning) {
+      // Start timer
+      activity.isRunning = true;
+      activity.timerStart = Date.now();
+      activity.startTime = new Date().toLocaleTimeString();
+    } else {
+      // Stop timer
+      activity.isRunning = false;
+      const elapsedTime = Math.round((Date.now() - activity.timerStart) / 60000); // in minutes
+      activity.endTime = new Date().toLocaleTimeString();
+      activity.actualTime = `${elapsedTime} min`;
+      activity.minutes = elapsedTime.toString();
+
+      // Determine Under/Over
+      const estimatedTime = parseInt(activity.estimatedTime) || 0;
+      if (elapsedTime < estimatedTime) {
+        activity.underOver = 'Under';
+      } else if (elapsedTime > estimatedTime) {
+        activity.underOver = 'Over';
+      } else {
+        activity.underOver = 'On Time';
+      }
+    }
+
+    setActivities(newActivities);
+  };
+
+  const getCategoryColor = (category) => {
+    const categoryColors = {
+      'Personal Branding': 'bg-pink-100',
+      'Networking': 'bg-teal-100',
+      'Fitness': 'bg-red-100',
+      'Creativity': 'bg-purple-100',
+      'Chores': 'bg-gray-100',
+      'Book Keeping': 'bg-yellow-100'
+    };
+    return categoryColors[category] || 'bg-white';
+  };
+
+  const handleShare = () => {
+    const mockShareLink = `https://scheduletracker.com/view/${Math.random().toString(36).substr(2, 9)}`;
+    setShareLink(mockShareLink);
+    
+    navigator.clipboard.writeText(mockShareLink).then(() => {
+      alert('Sharing link copied to clipboard!');
+    }).catch(err => {
+      console.error('Could not copy text: ', err);
+    });
+  };
+
+  const authenticateWithGoogle = () => {
+    // In a real implementation, this would redirect to Google OAuth flow
+    // For demo purposes, we're simply toggling the state
+    setIsGoogleAuthenticated(true);
+    alert('Successfully connected to Google Calendar');
+  };
+
+  const addToGoogleCalendar = (index) => {
+    const activity = activities[index];
+    
+    // Validate required fields
+    if (!activity.date || !activity.targetTime || !activity.whatToDo) {
+      alert('Please fill in date, target time and task description before adding to calendar');
+      return;
+    }
+    
+    // In a real implementation, this would send data to Google Calendar API
+    // For demo purposes, we'll just mark it as added
+    const newActivities = [...activities];
+    newActivities[index].addedToCalendar = true;
+    setActivities(newActivities);
+    
+    alert(`"${activity.whatToDo}" has been added to your Google Calendar on ${activity.date} at ${activity.targetTime}`);
+  };
+
+  const addAllToGoogleCalendar = () => {
+    // Filter for activities that have required fields and aren't already added
+    const activitiesToAdd = activities.filter(
+      activity => 
+        activity.date && 
+        activity.targetTime && 
+        activity.whatToDo && 
+        !activity.addedToCalendar
+    );
+    
+    if (activitiesToAdd.length === 0) {
+      alert('No eligible activities to add to calendar');
+      return;
+    }
+    
+    // Mark all eligible activities as added
+    const newActivities = activities.map(activity => {
+      if (activity.date && activity.targetTime && activity.whatToDo && !activity.addedToCalendar) {
+        return {...activity, addedToCalendar: true};
+      }
+      return activity;
+    });
+    
+    setActivities(newActivities);
+    alert(`${activitiesToAdd.length} activities added to your Google Calendar`);
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="bg-gradient-to-r from-pink-500 to-teal-500 p-4 rounded-t-lg">
+        <h1 className="text-2xl font-bold mb-2 text-white">Schedule Tracker</h1>
+        <p className="text-white text-sm">Track, Time, and Sync Your Activities with Google Calendar</p>
+      </div>
+      
+      <div className="bg-gray-100 p-4 flex justify-between items-center">
+        <div className="flex items-center">
+          <Calendar className="h-5 w-5 mr-2 text-teal-600" />
+          <span className="text-sm font-medium">Google Calendar Integration</span>
+        </div>
+        {!isGoogleAuthenticated ? (
+          <button 
+            onClick={authenticateWithGoogle}
+            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 flex items-center"
+          >
+            Connect Google Calendar
+          </button>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-green-600 flex items-center">
+              <Check className="h-4 w-4 mr-1" /> Connected
+            </span>
+            <button 
+              onClick={addAllToGoogleCalendar}
+              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+            >
+              Sync All Tasks
+            </button>
+          </div>
+        )}
+      </div>
+      
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-pink-200">
+            <th className="p-2 border">Completed</th>
+            <th className="p-2 border">Date</th>
+            <th className="p-2 border">Start Time</th>
+            <th className="p-2 border">End Time</th>
+            <th className="p-2 border">Target Time</th>
+            <th className="p-2 border">What I Need To Do</th>
+            <th className="p-2 border">Category</th>
+            <th className="p-2 border">Est. Time</th>
+            <th className="p-2 border">Actual Time</th>
+            <th className="p-2 border">Under/Over</th>
+            <th className="p-2 border">Timer</th>
+            <th className="p-2 border">Calendar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {activities.map((activity, index) => (
+            <tr 
+              key={activity.id} 
+              className={`border ${getCategoryColor(activity.category)}`}
+            >
+              <td className="p-2 border text-center">
+                <Checkbox
+                  checked={activity.completed}
+                  onCheckedChange={(checked) => 
+                    updateActivity(index, 'completed', checked)
+                  }
+                />
+              </td>
+              <td className="p-2 border">
+                <Input
+                  type="date"
+                  value={activity.date}
+                  onChange={(e) => 
+                    updateActivity(index, 'date', e.target.value)
+                  }
+                />
+              </td>
+              <td className="p-2 border">
+                <Input
+                  type="text"
+                  value={activity.startTime}
+                  readOnly
+                  placeholder="Start Time"
+                />
+              </td>
+              <td className="p-2 border">
+                <Input
+                  type="text"
+                  value={activity.endTime}
+                  readOnly
+                  placeholder="End Time"
+                />
+              </td>
+              <td className="p-2 border">
+                <Input
+                  type="text"
+                  value={activity.targetTime}
+                  onChange={(e) => 
+                    updateActivity(index, 'targetTime', e.target.value)
+                  }
+                  placeholder="12:00 am/pm"
+                />
+              </td>
+              <td className="p-2 border">
+                <Input
+                  value={activity.whatToDo}
+                  onChange={(e) => 
+                    updateActivity(index, 'whatToDo', e.target.value)
+                  }
+                  placeholder="Task Description"
+                />
+              </td>
+              <td className="p-2 border">
+                <Select
+                  value={activity.category}
+                  onValueChange={(value) => 
+                    updateActivity(index, 'category', value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskCategories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </td>
+              <td className="p-2 border">
+                <Input
+                  value={activity.estimatedTime}
+                  onChange={(e) => 
+                    updateActivity(index, 'estimatedTime', e.target.value)
+                  }
+                  placeholder="Est. Minutes"
+                />
+              </td>
+              <td className="p-2 border">
+                <Input
+                  value={activity.actualTime}
+                  readOnly
+                  placeholder="Actual Time"
+                />
+              </td>
+              <td className="p-2 border">
+                <Input
+                  value={activity.underOver}
+                  readOnly
+                  style={{
+                    backgroundColor: activity.underOver === 'Under' 
+                      ? 'green' 
+                      : activity.underOver === 'Over' 
+                        ? 'yellow' 
+                        : 'white',
+                    color: 'black'
+                  }}
+                  placeholder="Under/Over"
+                />
+              </td>
+              <td className="p-2 border">
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => toggleTimer(index)}
+                    className={`p-2 rounded ${
+                      activity.isRunning 
+                        ? 'bg-red-500 text-white' 
+                        : 'bg-green-500 text-white'
+                    }`}
+                  >
+                    {activity.isRunning ? <Square size={16} /> : <Play size={16} />}
+                  </button>
+                </div>
+              </td>
+              <td className="p-2 border text-center">
+                {activity.addedToCalendar ? (
+                  <span className="text-green-600 flex items-center justify-center">
+                    <Check className="h-4 w-4" />
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => isGoogleAuthenticated && addToGoogleCalendar(index)}
+                    disabled={!isGoogleAuthenticated}
+                    className={`p-1 rounded ${
+                      isGoogleAuthenticated 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <Calendar size={16} />
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="flex justify-between mt-4">
+        <div className="space-x-4">
+          <button 
+            onClick={addActivity}
+            className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600"
+          >
+            Add Activity
+          </button>
+          <button 
+            onClick={handleShare}
+            className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 flex items-center"
+          >
+            <Copy className="mr-2 h-4 w-4" /> Share Schedule
+          </button>
+        </div>
+        {shareLink && (
+          <div className="text-sm text-gray-600">
+            Sharing Link: <a href={shareLink} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline">{shareLink}</a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ScheduleTracker;
